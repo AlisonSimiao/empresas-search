@@ -1,0 +1,105 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Empresa {
+  id                Int              @id @default(autoincrement())
+  cnpj              String
+  razao_social      String
+  nome_fantasia     String
+  data_criacao      String
+  natureza_juridica String
+  CnaePrincipal     CNAEPrincipal    @relation(fields: [cNAEPrincipalId], references: [id])
+  CnaeSecundarios   CnaeSecundario[]
+  data_situacao     String
+  situacao          String
+  porte             String
+  capital_social    String
+  Endereco          Endereco         @relation(fields: [enderecoId], references: [id])
+  telefones         String
+  email             String
+  enderecoId        Int
+  ultimaAtualizacao DateTime?        @default(now())
+  Simei             Simei?           @relation(fields: [simeiId], references: [id])
+  Simples           Simples?         @relation(fields: [simplesId], references: [id])
+  simeiId           Int?
+  simplesId         Int?
+  cNAEPrincipalId   Int
+
+  @@map("empresas")
+}
+
+model Endereco {
+  id          Int       @id @default(autoincrement())
+  logradouro  String
+  numero      String
+  complemento String
+  bairro      String
+  cep         String
+  uf          String
+  municipio   String
+  Empresa     Empresa[]
+
+  @@map("enderecos")
+}
+
+model Simei {
+  id                Int       @id @default(autoincrement())
+  optante           Boolean
+  dataOpcao         DateTime?
+  dataExclusao      DateTime?
+  ultimaAtualizacao DateTime?
+  Empresa           Empresa[]
+
+  @@map("simei_opcao")
+}
+
+model Simples {
+  id                Int       @id @default(autoincrement())
+  optante           Boolean
+  dataOpcao         DateTime?
+  dataExclusao      DateTime?
+  ultimaAtualizacao DateTime?
+  Empresa           Empresa[]
+
+  @@map("simples_opcao")
+}
+
+model CNAEPrincipal {
+  id         Int       @id @default(autoincrement())
+  cnae       CNAE      @relation(fields: [cnaeCodigo], references: [codigo])
+  cnaeCodigo String
+  Empresa    Empresa[]
+
+  @@map("cnae_principal")
+}
+
+model CnaeSecundario {
+  id         Int     @id @default(autoincrement())
+  CNAE       CNAE    @relation(fields: [codigoCnae], references: [codigo])
+  empresa    Empresa @relation(fields: [empresaId], references: [id]) // Relacionamento 1:M
+  codigoCnae String
+  empresaId  Int
+
+  @@map("cnae_secundarios")
+}
+
+model CNAE {
+  codigo         String           @id
+  descricao      String
+  CNAEPrincipal  CNAEPrincipal[]
+  CnaeSecundario CnaeSecundario[]
+
+  @@map("cnaes")
+}

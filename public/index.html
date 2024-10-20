@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Empresas</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        const typesOp = [
+            'novas',
+            'melhores'
+        ]
+    </script>
+    <script>
+        const estadosOp = [
+      { "sigla": "AC", "nome": "Acre" },
+      { "sigla": "AL", "nome": "Alagoas" },
+      { "sigla": "AP", "nome": "Amapá" },
+      { "sigla": "AM", "nome": "Amazonas" },
+      { "sigla": "BA", "nome": "Bahia" },
+      { "sigla": "CE", "nome": "Ceará" },
+      { "sigla": "DF", "nome": "Distrito Federal" },
+      { "sigla": "ES", "nome": "Espírito Santo" },
+      { "sigla": "GO", "nome": "Goiás" },
+      { "sigla": "MA", "nome": "Maranhão" },
+      { "sigla": "MT", "nome": "Mato Grosso" },
+      { "sigla": "MS", "nome": "Mato Grosso do Sul" },
+      { "sigla": "MG", "nome": "Minas Gerais" },
+      { "sigla": "PA", "nome": "Pará" },
+      { "sigla": "PB", "nome": "Paraíba" },
+      { "sigla": "PR", "nome": "Paraná" },
+      { "sigla": "PE", "nome": "Pernambuco" },
+      { "sigla": "PI", "nome": "Piauí" },
+      { "sigla": "RJ", "nome": "Rio de Janeiro" },
+      { "sigla": "RN", "nome": "Rio Grande do Norte" },
+      { "sigla": "RS", "nome": "Rio Grande do Sul" },
+      { "sigla": "RO", "nome": "Rondônia" },
+      { "sigla": "RR", "nome": "Roraima" },
+      { "sigla": "SC", "nome": "Santa Catarina" },
+      { "sigla": "SP", "nome": "São Paulo" },
+      { "sigla": "SE", "nome": "Sergipe" },
+      { "sigla": "TO", "nome": "Tocantins" }
+    ]
+    </script>
+    <style>
+        *{
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: 1rem;
+            border: 2px solid ;
+            
+        }
+
+        label {
+            font-weight: 900;
+            font-size: 1.3rem;
+        }
+
+        .notification {
+            position: absolute;
+            right: 1rem;
+            margin-top: 1rem;
+            border: 2px solid;
+            width: min-content;
+            padding: 1rem;
+            border-radius: 1rem;
+            max-width: 100ch;
+            box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.4),
+            inset 2px 2px 5px rgba(0, 0, 0, 0.4);
+            font-weight: 900;
+            border-color: black;
+            color: rgb(255, 255, 255);
+
+        }
+
+        .error {
+            background-color: red;
+        }
+
+        .log {
+            background-color: rgb(0, 0, 0);
+        }
+
+        .success {
+            background-color: green;
+        }
+
+        .warn {
+            background-color: rgb(230, 93, 2);
+        }
+
+        hr {
+            grid-column: span 4;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100vw;   
+        }
+
+        main {
+            width: 800px;
+            height: 100vh;
+        }
+
+        #tableEmpresa {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+
+            border: 2px solid black;
+            border-radius: 1rem;
+            padding: 1rem;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .hdr {
+            font-size: 1.2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .no-data, .load {
+            grid-column: span 4;
+            font-size: 3rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-transform: capitalize;
+            height: 20vh;
+        }
+
+        @keyframes loading {
+            0% {
+                color: #fff;
+                content: ' .';
+            }
+            25% {
+                content: '..';;
+            }
+            50% {
+                content: '...';;
+            }
+            100% {
+                color: #000;
+                content: '';
+            }
+        }
+
+        @keyframes shake {
+            0% {
+                color: #d66306;
+                content: ' .';
+            }
+            50% {
+                color: #0694d6;
+                content: '...';;
+            }
+            100% {
+                color: #000;
+                content: '';
+            }
+        }
+
+        .no-data {
+            animation: shake 1s ease infinite;
+        }
+
+        .load::after {
+            content: '';
+            animation: loading 2.3s ease infinite;
+        }
+
+    </style>
+</head>
+<body>
+    <main>
+        <div class="container-form">
+            <form >
+                <label>
+                    Busca de empresas
+                </label>
+                <div>
+                    <label>
+                        Estado: 
+                        <select id="estados"></select>
+                    </label>
+    
+                    <label>
+                        Tipo: 
+                        <select id="types">
+                        </select>
+                    </label>
+                    <button id="search" onclick="searchAll()" type="button">Buscar</button>
+                </div>
+                
+            </form>
+        </div>
+
+        <div id="tableEmpresa">
+        </div>
+
+        <div id="notification-container">
+
+        </div>
+    </main>
+    <script>
+        let empresas = []
+        function config() {
+                for(const estado of estadosOp) {
+                    const option = document.createElement('option')
+                    option.value = estado.sigla
+                    option.label = estado.nome
+
+                    estados.append(option)
+                }
+
+                for (const type of typesOp) {
+                    const option = document.createElement('option')
+                    option.value = type
+                    option.label = type
+
+                    types.append(option)
+                }
+        }
+
+      const socket = io('http://localhost:3000');
+    
+      socket.on('notification', (data) => {
+        createNotification(JSON.parse(data))
+      });
+
+      socket.on('empresa', (data) => {
+        createEmpresa(JSON.parse(data))
+      });
+
+      function updateTable(init = false) {
+        tableEmpresa.innerHTML = `
+            <span class='hdr'>cnpj</span>
+            <span class='hdr'>cnae</span>
+            <span class='hdr'>telefones</span>
+            <span class='hdr'>email</span>
+            
+            ${empresas.length 
+            ? empresas.reduce((acc, empresa) => {
+                const html = `
+                    <hr>
+                    <span>${empresa.cnpj}</span>
+                    <span>${empresa.cnae}</span>
+                    <span>
+                        <ul>
+                        ${
+                        empresa.telefone?.split('/').reduce((acc, telefone)=> {
+                            const html = `
+                            <li>${telefone}</li>
+                            `
+                            return acc.concat(html)
+                        }, '')
+                        
+                        }
+                        </ul>    
+                    </span>
+                    <span>${empresa.email}</span>
+                `
+
+                return acc.concat(html)
+            }, '') 
+            : init
+                ? '<div class="no-data">sem dados</div>'
+                : '<div class="load">Carregando</div>'
+            }
+        `
+      }
+
+      updateTable(true)
+
+      function createEmpresa(newEmpresa){
+        empresas.push(newEmpresa)
+        updateTable()
+      }
+
+      function createNotification({type, message}) {
+        const notification_container = document.querySelector('#notification_container')
+        const container = document.createElement('div')
+        const msg = document.createElement('span')
+        msg.textContent = message
+        container.classList.add('notification')
+        container.classList.add(type)
+
+        container.append(msg)
+
+        setTimeout(() => {
+            notification_container.removeChild(container)
+        }, 30000)
+
+        notification_container.append(container)
+      }
+
+    function searchAll() {
+        const type = types.value;
+        const estado = estados.value
+        empresas = []
+        updateTable()
+        socket.emit('search', JSON.stringify({type, estado}))
+    }
+      config()
+    </script>
+</body>
+</html>
